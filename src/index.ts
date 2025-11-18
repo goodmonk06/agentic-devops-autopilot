@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { webhookRoutes } from './routes/webhook';
 import { repoConfigRoutes } from './routes/repo-config';
 import { incidentRoutes } from './routes/incident';
+import { errorHandler } from './lib/errors';
 
 const fastify = Fastify({
   logger: {
@@ -15,6 +16,9 @@ const fastify = Fastify({
 
 async function start() {
   try {
+    // エラーハンドラ
+    fastify.setErrorHandler(errorHandler);
+
     // CORS設定
     await fastify.register(cors, {
       origin: true,

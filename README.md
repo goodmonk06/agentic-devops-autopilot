@@ -1,331 +1,386 @@
 # 🤖 Agentic DevOps Autopilot
 
-**24時間稼働するAI-powered DevOps自動化プラットフォーム**
+**AI-powered DevOps automation platform for 24/7 incident monitoring and response**
 
-GitHub ActionsやRailwayのデプロイ失敗を検知し、AIが原因分析から対応策の提案・実行まで自動で行います。人間のSREが眠っている間も、AIエージェントがインシデント対応を継続します。
+Automatically detects GitHub Actions and Railway deployment failures, analyzes root causes with AI, and executes remediation actions - all while your team sleeps.
 
-## 🎯 コンセプト
+## Overview
 
-Agentic DevOps Autopilotは、**AI駆動のSite Reliability Engineer（SRE）**として機能します。
+Agentic DevOps Autopilot functions as an **AI-driven Site Reliability Engineer (SRE)** that:
 
-- **24/7 監視**: GitHub ActionsとRailwayのイベントをリアルタイムで監視
-- **自動分析**: OpenAI GPT-4を使用してインシデントの根本原因を分析
-- **自動対応**: PRへのコメント、Issue作成、Slack通知などを自動実行
-- **学習と改善**: インシデントの履歴を蓄積し、将来的な予測と予防に活用
+- 🔍 **Monitors** GitHub Actions and Railway deployments 24/7
+- 🧠 **Analyzes** incidents using OpenAI GPT-4 to identify root causes
+- ⚡ **Responds** automatically with PR comments, issue creation, and alerts
+- 📊 **Tracks** all incidents through an intuitive dashboard
 
-## ✨ 主な機能
+## Tech Stack
 
-### 1. Webhook受信
-- **GitHub Actions**: ビルド失敗、テスト失敗、チェック失敗を検知
-- **Railway**: デプロイ失敗、ランタイムエラーを検知
+| Layer | Technology |
+|-------|-----------|
+| **Runtime** | Node.js 18+ / TypeScript |
+| **API Framework** | Fastify |
+| **Database** | PostgreSQL 15 + Prisma ORM |
+| **Queue** | BullMQ + Redis |
+| **AI** | OpenAI GPT-4 Turbo |
+| **External APIs** | GitHub REST API, Railway GraphQL API |
+| **Testing** | Vitest |
+| **Container** | Docker + Docker Compose |
 
-### 2. AI解析エンジン
-- OpenAI GPT-4による根本原因の仮説生成
-- 再現手順の自動生成
-- 優先度付きアクションプランの提案
+## Domain Model
 
-### 3. 自動アクション実行
-- PRへの詳細な分析結果コメント
-- GitHubのIssue自動作成
-- Slack/Discord通知
-- （将来）自動修正PRの作成
+### Core Entities
 
-### 4. ダッシュボード
-- インシデント一覧とステータス管理
-- リポジトリ設定の管理
-- 統計情報の可視化
+**RepoConfig** - Repository monitoring configuration
+- GitHub repository identification (owner/repo)
+- Railway service connection
+- Alert webhook URLs
+- Active/inactive status
 
-## 🏗️ アーキテクチャ
+**Incident** - Detected failure or error event
+- Type: BUILD_FAILURE, TEST_FAILURE, DEPLOY_FAILURE, RUNTIME_ERROR, etc.
+- Source: GITHUB_ACTIONS, RAILWAY, MANUAL
+- Status: OPEN → ANALYZING → ACTIONABLE → IN_PROGRESS → RESOLVED
+- Severity: low, medium, high, critical
+- Linked to PR, commit, and branch
+
+**IncidentAction** - Automated response action
+- Type: COMMENT_PR, CREATE_ISSUE, NOTIFY_SLACK, ROLLBACK, etc.
+- Execution result and success status
+
+**AgentRun** - AI analysis log
+- Model used and token consumption
+- Analysis results (hypothesis, reproduction steps, suggested actions)
+- Execution duration
+
+### Entity Relationships
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      External Services                       │
-├───────────────┬──────────────────┬─────────────────┬────────┤
-│ GitHub Actions│    Railway       │   Slack/Discord │ OpenAI │
-└───────┬───────┴────────┬─────────┴────────┬────────┴───┬────┘
-        │                │                  │            │
-        │ Webhooks       │ Webhooks         │ Notify     │ Analyze
-        ▼                ▼                  ▼            ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    Fastify API Server                         │
-├───────────────────────────────────────────────────────────────┤
-│  /webhook/github  │  /webhook/railway  │  /api/*  │  /       │
-│                   │                    │          │ Dashboard │
-└────────┬──────────┴────────────────────┴──────────┴──────┬────┘
-         │                                                  │
-         │ Create Incident                                 │ Query
-         ▼                                                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    PostgreSQL + Prisma                      │
-│  RepoConfig │ Incident │ IncidentAction │ AgentRun          │
-└────────┬────────────────────────────────────────────────────┘
-         │
-         │ Enqueue Job
-         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    BullMQ + Redis                            │
-└────────┬────────────────────────────────────────────────────┘
-         │
-         │ Process Job
-         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Worker Process                            │
-├─────────────────────────────────────────────────────────────┤
-│  1. Fetch Incident                                           │
-│  2. AI Analysis (OpenAI)                                     │
-│  3. Execute Actions (GitHub API, Railway API, Webhook)      │
-│  4. Record Results                                           │
-└─────────────────────────────────────────────────────────────┘
+RepoConfig (1) ─── (N) Incident
+Incident (1) ─── (N) IncidentAction
+Incident (1) ─── (N) AgentRun
 ```
 
-## 🛠️ 技術スタック
+## Getting Started
 
-- **Runtime**: Node.js 18+ / TypeScript
-- **Web Framework**: Fastify
-- **Database**: PostgreSQL + Prisma ORM
-- **Queue**: BullMQ + Redis
-- **AI**: OpenAI GPT-4 Turbo
-- **APIs**: GitHub REST API, Railway GraphQL API
-- **Containerization**: Docker + Docker Compose
+### Requirements
 
-## 🚀 クイックスタート
+- **Node.js** 18 or higher
+- **Docker** and Docker Compose (for databases)
+- **GitHub Personal Access Token** (optional, for GitHub integration)
+- **OpenAI API Key** (optional, for AI analysis)
+- **Railway API Token** (optional, for Railway integration)
 
-### 前提条件
+### Quick Setup
 
-- Node.js 18以上
-- PostgreSQL 15以上
-- Redis 7以上
-- GitHub Personal Access Token
-- OpenAI API Key
-- （オプション）Railway API Token
-
-### 1. リポジトリのクローン
+The fastest way to get started:
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/yourusername/agentic-devops-autopilot.git
 cd agentic-devops-autopilot
-```
 
-### 2. 依存関係のインストール
-
-```bash
+# 2. Install dependencies
 npm install
-```
 
-### 3. 環境変数の設定
-
-```bash
+# 3. Copy environment variables
 cp .env.example .env
+
+# 4. Start PostgreSQL and Redis
+make docker-dev
+
+# 5. Setup database and seed demo data
+make db-setup
+
+# 6. Start the API server (terminal 1)
+npm run dev
+
+# 7. Start the worker (terminal 2)
+npm run dev:worker
+
+# 8. Open the dashboard
+open http://localhost:3000
 ```
 
-`.env`ファイルを編集して必要な値を設定:
+### Environment Variables
+
+Edit `.env` with your configuration:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/devops_autopilot"
+# Required
+DATABASE_URL="postgresql://devops:devops123@localhost:5432/devops_autopilot?schema=public"
 REDIS_HOST="localhost"
 REDIS_PORT=6379
+PORT=3000
 
+# Optional - for full functionality
 GITHUB_TOKEN="ghp_your_token_here"
 GITHUB_WEBHOOK_SECRET="your_webhook_secret"
 RAILWAY_API_TOKEN="your_railway_token"
 OPENAI_API_KEY="sk-your_openai_key"
 ```
 
-### 4. データベースのセットアップ
+**Note:** The application works without API keys - you can explore the UI with demo data. External integrations require valid tokens.
+
+### Development Commands
 
 ```bash
-npx prisma migrate dev
-npx prisma generate
+# Development
+npm run dev              # Start API server with hot reload
+npm run dev:worker       # Start worker with hot reload
+
+# Testing
+npm test                 # Run tests in watch mode
+npm run test:run         # Run tests once
+
+# Database
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed demo data
+npm run db:reset         # Reset database (deletes all data)
+
+# Docker
+make docker-dev          # Start PostgreSQL + Redis only
+make docker-up           # Start full stack in Docker
+make docker-down         # Stop containers
+
+# Utilities
+npm run lint             # Check code style
+npm run typecheck        # Check TypeScript types
+make help                # Show all available commands
 ```
 
-### 5. 開発サーバーの起動
+## Example Workflow
 
-**ターミナル1: APIサーバー**
+This implementation provides a complete vertical slice demonstrating the core functionality:
+
+### 1. Repository Management
+
+**Configure a repository to monitor:**
+
 ```bash
-npm run dev
+curl -X POST http://localhost:3000/api/repo-configs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "githubOwner": "myorg",
+    "githubRepo": "myapp",
+    "defaultBranch": "main",
+    "railwayServiceId": "srv-abc123"
+  }'
 ```
 
-**ターミナル2: ワーカー**
+Or use the dashboard at http://localhost:3000 → Repositories tab → Add Repository
+
+### 2. Incident Creation
+
+**Via webhook (production):**
+GitHub/Railway sends failure events to `/webhook/github` or `/webhook/railway`
+
+**Manual creation (testing):**
 ```bash
-npm run worker
+curl -X POST http://localhost:3000/webhook/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: workflow_run" \
+  -d @test/fixtures/github-workflow-failure.json
 ```
 
-### 6. ダッシュボードにアクセス
+### 3. Automatic Processing
 
-http://localhost:3000 でダッシュボードが開きます。
+The worker automatically:
+1. Picks up the incident from the queue
+2. Analyzes with OpenAI (if configured)
+3. Executes suggested actions:
+   - Comments on PR with analysis
+   - Creates GitHub issue
+   - Sends Slack notification
+4. Updates incident status
 
-## 🐳 Docker Composeで起動
+### 4. Dashboard Monitoring
 
-最も簡単な方法はDocker Composeを使用することです:
+Visit http://localhost:3000 to:
+- View all incidents and their status
+- See AI analysis results
+- Manage repository configurations
+- View statistics
 
-```bash
-# .envファイルを設定
-cp .env.example .env
-# 必要な環境変数を編集
+### Demo Data
 
-# コンテナ起動
-docker-compose up -d
+The seed script creates realistic demo data:
 
-# ログ確認
-docker-compose logs -f
-```
+**Repositories:**
+- `demo-org/web-app` - Active monitoring
+- `demo-org/api-service` - Active with Slack alerts
+- `demo-org/legacy-app` - Inactive
 
-これで以下のサービスが起動します:
-- API Server (http://localhost:3000)
-- Worker
-- PostgreSQL
-- Redis
+**Incidents:**
+- Build failure on main branch (RESOLVED)
+- Test failure in feature branch with PR #42 (IN_PROGRESS)
+- Railway deployment failure (ANALYZING)
+- Runtime error (OPEN)
 
-## 📖 使い方
+Each incident includes AI analysis results and executed actions.
 
-### 1. リポジトリの登録
-
-ダッシュボードの「Repositories」タブで監視したいリポジトリを登録します。
-
-### 2. GitHub Webhookの設定
-
-GitHubリポジトリの Settings > Webhooks > Add webhook:
-
-- **Payload URL**: `https://your-domain.com/webhook/github`
-- **Content type**: `application/json`
-- **Secret**: `.env`の`GITHUB_WEBHOOK_SECRET`と同じ値
-- **Events**:
-  - Workflow runs
-  - Workflow jobs
-  - Check runs
-
-### 3. Railway Webhookの設定（オプション）
-
-Railwayプロジェクトの設定でWebhookを追加:
-
-- **URL**: `https://your-domain.com/webhook/railway`
-- **Events**: Deployment events, Runtime errors
-
-### 4. インシデント監視
-
-これで、ビルド失敗やデプロイエラーが発生すると:
-
-1. Webhookでインシデントが作成される
-2. AIがログを解析して原因を特定
-3. 自動でPRにコメントまたはIssue作成
-4. ダッシュボードで状況を確認可能
-
-## 📊 データモデル
-
-### RepoConfig
-リポジトリの設定情報
-
-```typescript
-{
-  githubOwner: string
-  githubRepo: string
-  defaultBranch: string
-  railwayServiceId?: string
-  alertWebhookUrl?: string
-  isActive: boolean
-}
-```
-
-### Incident
-インシデント情報
-
-```typescript
-{
-  type: 'BUILD_FAILURE' | 'TEST_FAILURE' | 'DEPLOY_FAILURE' | ...
-  source: 'GITHUB_ACTIONS' | 'RAILWAY' | 'MANUAL'
-  status: 'OPEN' | 'ANALYZING' | 'ACTIONABLE' | 'IN_PROGRESS' | 'RESOLVED'
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  title: string
-  payloadJson: object
-}
-```
-
-### IncidentAction
-インシデントに対して実行したアクション
-
-```typescript
-{
-  actionType: 'COMMENT_PR' | 'CREATE_ISSUE' | 'NOTIFY_SLACK' | ...
-  description: string
-  resultJson: object
-  success: boolean
-}
-```
-
-### AgentRun
-AI解析の実行ログ
-
-```typescript
-{
-  model: string
-  analysis: {
-    hypothesis: string
-    reproductionSteps: string[]
-    suggestedActions: Array<{type, description, priority}>
-  }
-  promptTokens: number
-  completionTokens: number
-}
-```
-
-## 🔌 API エンドポイント
+## API Endpoints
 
 ### Webhooks
-- `POST /webhook/github` - GitHub webhookを受信
-- `POST /webhook/railway` - Railway webhookを受信
+- `POST /webhook/github` - Receive GitHub webhooks
+- `POST /webhook/railway` - Receive Railway webhooks
+- `GET /webhook/health` - Webhook health check
 
 ### Repository Config
-- `GET /api/repo-configs` - リポジトリ一覧
-- `POST /api/repo-configs` - リポジトリ登録
-- `PATCH /api/repo-configs/:id` - リポジトリ更新
-- `DELETE /api/repo-configs/:id` - リポジトリ削除
-- `POST /api/repo-configs/:id/toggle` - 有効/無効切り替え
+- `GET /api/repo-configs` - List all repositories
+- `GET /api/repo-configs/:id` - Get repository details
+- `POST /api/repo-configs` - Add new repository
+- `PATCH /api/repo-configs/:id` - Update repository
+- `DELETE /api/repo-configs/:id` - Remove repository
+- `POST /api/repo-configs/:id/toggle` - Toggle active status
 
 ### Incidents
-- `GET /api/incidents` - インシデント一覧
-- `GET /api/incidents/:id` - インシデント詳細
-- `PATCH /api/incidents/:id` - ステータス更新
-- `GET /api/incidents/stats/summary` - 統計情報
+- `GET /api/incidents` - List incidents (supports filtering)
+- `GET /api/incidents/:id` - Get incident details
+- `PATCH /api/incidents/:id` - Update incident status
+- `GET /api/incidents/stats/summary` - Get statistics
 
-## 🔮 将来の構想
+### Health
+- `GET /health` - Application health check
 
-### Phase 2: 自動修正PR作成
-- AIが修正コードを生成してPRを自動作成
-- テストが通るまで自動リトライ
-- レビュアーへの自動アサイン
+## Production Deployment
 
-### Phase 3: 予測的メンテナンス
-- 過去のインシデントパターンを学習
-- 問題が発生する前に警告
-- 定期的なヘルスチェックと改善提案
+### Using Docker Compose
 
-### Phase 4: マルチクラウド対応
+```bash
+# 1. Configure environment variables
+cp .env.example .env
+# Edit .env with production values
+
+# 2. Build and start all services
+docker compose up -d
+
+# 3. Run migrations
+docker compose exec api npx prisma migrate deploy
+
+# 4. Check status
+docker compose ps
+docker compose logs -f
+```
+
+The stack includes:
+- API server (port 3000)
+- Worker process
+- PostgreSQL database
+- Redis queue
+
+### Railway Deployment
+
+This application is optimized for Railway:
+
+1. Connect your GitHub repository to Railway
+2. Add environment variables in Railway dashboard
+3. Deploy!
+
+Railway will automatically:
+- Detect the Dockerfile
+- Set up PostgreSQL and Redis services
+- Run migrations on deploy
+
+## Testing
+
+The project includes comprehensive tests:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests once (CI mode)
+npm run test:run
+
+# Run specific test file
+npm test src/services/__tests__/incident.service.test.ts
+```
+
+**Test Coverage:**
+- Error handling utilities
+- Incident service business logic
+- API validation
+- (More tests can be added as needed)
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   External Services                         │
+│  GitHub Actions │ Railway │ Slack │ OpenAI GPT-4           │
+└────────┬────────┴─────────┴───────┴──────────────┬──────────┘
+         │ Webhooks                    AI Analysis │
+         ▼                                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Fastify API Server                         │
+│  ┌──────────┬──────────┬──────────┬──────────────┐         │
+│  │ Webhooks │ RepoAPI  │ Incident │  Dashboard   │         │
+│  │  Routes  │  Routes  │  Routes  │   (Static)   │         │
+│  └──────────┴──────────┴──────────┴──────────────┘         │
+└────────┬────────────────────────────────────────────────────┘
+         │ Create Incident
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              PostgreSQL + Prisma ORM                        │
+│  RepoConfig │ Incident │ IncidentAction │ AgentRun         │
+└────────┬────────────────────────────────────────────────────┘
+         │ Enqueue Job
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   BullMQ + Redis                            │
+└────────┬────────────────────────────────────────────────────┘
+         │ Process Job
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Worker Process                             │
+│  1. Fetch Incident                                          │
+│  2. AI Analysis (OpenAI GPT-4)                              │
+│  3. Execute Actions (GitHub, Railway, Slack)                │
+│  4. Record Results                                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Future Extensions
+
+### Phase 2: Auto-Remediation (Current Phase)
+- ✅ Vertical slice implementation
+- ✅ End-to-end testing
+- ✅ Seed data and demo flow
+- ✅ Production-ready Docker setup
+
+### Phase 3: Intelligent PR Creation
+- AI generates fix code
+- Creates PR with automated tests
+- Self-healing retry logic
+- Auto-assign reviewers
+
+### Phase 4: Predictive Maintenance
+- Learn from historical incident patterns
+- Predict failures before they occur
+- Proactive health checks
+- Automated optimization suggestions
+
+### Phase 5: Multi-Cloud Support
 - AWS (CloudWatch, CodePipeline)
 - GCP (Cloud Build, Cloud Run)
 - Azure (DevOps, App Service)
 
-### Phase 5: チーム協調
-- チームメンバーへの自動エスカレーション
-- オンコール管理との統合
-- インシデントポストモーテムの自動生成
+### Phase 6: Team Collaboration
+- Smart escalation to on-call engineers
+- PagerDuty/Opsgenie integration
+- Automated incident post-mortems
+- Knowledge base generation
 
-## 🤝 コントリビューション
+## Contributing
 
-プルリクエストを歓迎します！大きな変更の場合は、まずIssueを開いて変更内容を議論してください。
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 ライセンス
+## License
 
-MIT License
-
-## 🙏 謝辞
-
-このプロジェクトは以下のオープンソースプロジェクトに支えられています:
-- Fastify
-- Prisma
-- BullMQ
-- OpenAI
-- Octokit
+MIT License - see [LICENSE](LICENSE) for details
 
 ---
 
-**Built with ❤️ by AI-powered DevOps Engineers**
+**Built with ❤️ for DevOps teams who value sleep**
+
+Need help? [Open an issue](https://github.com/yourusername/agentic-devops-autopilot/issues)
