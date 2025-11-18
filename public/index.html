@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOps Autopilot Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #0f0f23;
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 30px 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #2a2a3e;
+      padding-bottom: 10px;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: #1a1a2e;
+      border: none;
+      color: #e0e0e0;
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      background: #2a2a3e;
+    }
+
+    .tab.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: #1a1a2e;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      opacity: 0.7;
+      margin-top: 5px;
+    }
+
+    .card {
+      background: #1a1a2e;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .card h2 {
+      margin-bottom: 15px;
+      color: #667eea;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #2a2a3e;
+    }
+
+    th {
+      background: #2a2a3e;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background: #2a2a3e;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .badge.open { background: #e74c3c; }
+    .badge.analyzing { background: #f39c12; }
+    .badge.actionable { background: #3498db; }
+    .badge.in_progress { background: #9b59b6; }
+    .badge.resolved { background: #2ecc71; }
+    .badge.critical { background: #e74c3c; }
+    .badge.high { background: #e67e22; }
+    .badge.medium { background: #f39c12; }
+    .badge.low { background: #95a5a6; }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: #2a2a3e;
+      color: #e0e0e0;
+    }
+
+    .btn-secondary:hover {
+      background: #3a3a4e;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a3e;
+      border: 1px solid #3a3a4e;
+      color: #e0e0e0;
+      border-radius: 4px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 Agentic DevOps Autopilot</h1>
+      <p class="subtitle">24/7 AI-powered DevOps monitoring and incident response</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('incidents')">Incidents</button>
+      <button class="tab" onclick="switchTab('repos')">Repositories</button>
+      <button class="tab" onclick="switchTab('stats')">Statistics</button>
+    </div>
+
+    <!-- Incidents Tab -->
+    <div id="incidents-tab" class="tab-content active">
+      <div class="card">
+        <h2>Recent Incidents</h2>
+        <div id="incidents-list" class="loading">Loading incidents...</div>
+      </div>
+    </div>
+
+    <!-- Repositories Tab -->
+    <div id="repos-tab" class="tab-content">
+      <div class="card">
+        <h2>Configured Repositories</h2>
+        <button class="btn btn-primary" onclick="showAddRepoForm()" style="margin-bottom: 15px;">
+          + Add Repository
+        </button>
+        <div id="repos-list" class="loading">Loading repositories...</div>
+      </div>
+
+      <div id="add-repo-form" class="card" style="display: none;">
+        <h2>Add Repository</h2>
+        <form onsubmit="addRepo(event)">
+          <div class="form-group">
+            <label>GitHub Owner</label>
+            <input type="text" id="githubOwner" required>
+          </div>
+          <div class="form-group">
+            <label>GitHub Repository</label>
+            <input type="text" id="githubRepo" required>
+          </div>
+          <div class="form-group">
+            <label>Default Branch</label>
+            <input type="text" id="defaultBranch" value="main">
+          </div>
+          <div class="form-group">
+            <label>Railway Service ID (optional)</label>
+            <input type="text" id="railwayServiceId">
+          </div>
+          <button type="submit" class="btn btn-primary">Add</button>
+          <button type="button" class="btn btn-secondary" onclick="hideAddRepoForm()">Cancel</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Statistics Tab -->
+    <div id="stats-tab" class="tab-content">
+      <div class="stats" id="stats-cards">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">-</div>
+          <div class="stat-label">Total Incidents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-open">-</div>
+          <div class="stat-label">Open Incidents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-resolved">-</div>
+          <div class="stat-label">Resolved</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById(tabName + '-tab').classList.add('active');
+
+      if (tabName === 'incidents') loadIncidents();
+      if (tabName === 'repos') loadRepos();
+      if (tabName === 'stats') loadStats();
+    }
+
+    // Load incidents
+    async function loadIncidents() {
+      try {
+        const res = await fetch(`${API_BASE}/api/incidents`);
+        const { data } = await res.json();
+
+        if (data.length === 0) {
+          document.getElementById('incidents-list').innerHTML = '<p>No incidents found.</p>';
+          return;
+        }
+
+        const html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Source</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(i => `
+                <tr>
+                  <td>${i.type}</td>
+                  <td>${i.title}</td>
+                  <td><span class="badge ${i.status.toLowerCase()}">${i.status}</span></td>
+                  <td><span class="badge ${i.severity}">${i.severity}</span></td>
+                  <td>${i.source}</td>
+                  <td>${new Date(i.createdAt).toLocaleString()}</td>
+                  <td>
+                    ${i.status !== 'RESOLVED' ? `<button class="btn btn-secondary" onclick="resolveIncident('${i.id}')">Resolve</button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('incidents-list').innerHTML = html;
+      } catch (error) {
+        console.error('Failed to load incidents:', error);
+        document.getElementById('incidents-list').innerHTML = '<p>Failed to load incidents.</p>';
+      }
+    }
+
+    // Load repos
+    async function loadRepos() {
+      try {
+        const res = await fetch(`${API_BASE}/api/repo-configs`);
+        const { data } = await res.json();
+
+        if (data.length === 0) {
+          document.getElementById('repos-list').innerHTML = '<p>No repositories configured.</p>';
+          return;
+        }
+
+        const html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>Branch</th>
+                <th>Railway Service</th>
+                <th>Incidents</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(r => `
+                <tr>
+                  <td><strong>${r.githubOwner}/${r.githubRepo}</strong></td>
+                  <td>${r.defaultBranch}</td>
+                  <td>${r.railwayServiceId || '-'}</td>
+                  <td>${r._count.incidents}</td>
+                  <td><span class="badge ${r.isActive ? 'resolved' : 'open'}">${r.isActive ? 'Active' : 'Inactive'}</span></td>
+                  <td>
+                    <button class="btn btn-secondary" onclick="toggleRepo('${r.id}')">Toggle</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('repos-list').innerHTML = html;
+      } catch (error) {
+        console.error('Failed to load repos:', error);
+        document.getElementById('repos-list').innerHTML = '<p>Failed to load repositories.</p>';
+      }
+    }
+
+    // Load stats
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/incidents/stats/summary`);
+        const { data } = await res.json();
+
+        document.getElementById('stat-total').textContent = data.total;
+        document.getElementById('stat-open').textContent = data.open;
+        document.getElementById('stat-resolved').textContent = data.resolved;
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      }
+    }
+
+    // Resolve incident
+    async function resolveIncident(id) {
+      try {
+        await fetch(`${API_BASE}/api/incidents/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'RESOLVED' })
+        });
+        loadIncidents();
+      } catch (error) {
+        alert('Failed to resolve incident');
+      }
+    }
+
+    // Toggle repo
+    async function toggleRepo(id) {
+      try {
+        await fetch(`${API_BASE}/api/repo-configs/${id}/toggle`, { method: 'POST' });
+        loadRepos();
+      } catch (error) {
+        alert('Failed to toggle repository');
+      }
+    }
+
+    // Add repo
+    function showAddRepoForm() {
+      document.getElementById('add-repo-form').style.display = 'block';
+    }
+
+    function hideAddRepoForm() {
+      document.getElementById('add-repo-form').style.display = 'none';
+    }
+
+    async function addRepo(e) {
+      e.preventDefault();
+      try {
+        const data = {
+          githubOwner: document.getElementById('githubOwner').value,
+          githubRepo: document.getElementById('githubRepo').value,
+          defaultBranch: document.getElementById('defaultBranch').value,
+          railwayServiceId: document.getElementById('railwayServiceId').value || undefined,
+        };
+
+        await fetch(`${API_BASE}/api/repo-configs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        hideAddRepoForm();
+        loadRepos();
+      } catch (error) {
+        alert('Failed to add repository');
+      }
+    }
+
+    // Initial load
+    loadIncidents();
+  </script>
+</body>
+</html>

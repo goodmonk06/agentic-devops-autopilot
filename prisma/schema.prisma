@@ -1,0 +1,138 @@
+// Prisma schema for Agentic DevOps Autopilot
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// リポジトリ設定モデル
+model RepoConfig {
+  id               String     @id @default(cuid())
+  githubOwner      String     // GitHubオーナー名
+  githubRepo       String     // リポジトリ名
+  defaultBranch    String     @default("main")
+  railwayServiceId String?    // Railway サービスID
+  railwayProjectId String?    // Railway プロジェクトID
+  alertWebhookUrl  String?    // アラート通知先Webhook URL（Slack等）
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  incidents        Incident[]
+
+  @@unique([githubOwner, githubRepo])
+  @@index([githubOwner, githubRepo])
+  @@map("repo_configs")
+}
+
+// インシデント種別
+enum IncidentType {
+  BUILD_FAILURE       // ビルド失敗
+  TEST_FAILURE        // テスト失敗
+  RUNTIME_ERROR       // ランタイムエラー
+  DEPLOY_FAILURE      // デプロイ失敗
+  PERFORMANCE_ISSUE   // パフォーマンス問題
+  SECURITY_ALERT      // セキュリティアラート
+  CUSTOM              // カスタム
+}
+
+// インシデント発生元
+enum IncidentSource {
+  GITHUB_ACTIONS  // GitHub Actions
+  RAILWAY         // Railway
+  MANUAL          // 手動登録
+  MONITORING      // モニタリングツール
+}
+
+// インシデント状態
+enum IncidentStatus {
+  OPEN        // オープン
+  ANALYZING   // AI解析中
+  ACTIONABLE  // アクション可能
+  IN_PROGRESS // 対応中
+  RESOLVED    // 解決済み
+  IGNORED     // 無視
+}
+
+// インシデントモデル
+model Incident {
+  id          String          @id @default(cuid())
+  repoId      String
+  type        IncidentType
+  source      IncidentSource
+  title       String
+  description String?
+  payloadJson Json            // 元のWebhookペイロード
+  status      IncidentStatus  @default(OPEN)
+  severity    String          @default("medium") // low, medium, high, critical
+  prNumber    Int?            // 関連PR番号
+  commitSha   String?         // 関連コミットハッシュ
+  branch      String?         // 対象ブランチ
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  resolvedAt  DateTime?
+
+  repo        RepoConfig      @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  actions     IncidentAction[]
+  agentRuns   AgentRun[]
+
+  @@index([repoId, status])
+  @@index([createdAt])
+  @@index([status])
+  @@map("incidents")
+}
+
+// アクション種別
+enum ActionType {
+  COMMENT_PR      // PRにコメント
+  CREATE_ISSUE    // Issue作成
+  UPDATE_ISSUE    // Issue更新
+  TRIGGER_DEPLOY  // デプロイトリガー
+  ROLLBACK        // ロールバック
+  NOTIFY_SLACK    // Slack通知
+  CREATE_PR       // PR作成（自動修正）
+  CUSTOM          // カスタムアクション
+}
+
+// インシデントアクションモデル
+model IncidentAction {
+  id          String     @id @default(cuid())
+  incidentId  String
+  actionType  ActionType
+  description String?
+  resultJson  Json?      // アクション実行結果
+  success     Boolean    @default(false)
+  errorMsg    String?
+  createdAt   DateTime   @default(now())
+
+  incident    Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([createdAt])
+  @@map("incident_actions")
+}
+
+// AI エージェント実行ログ
+model AgentRun {
+  id            String   @id @default(cuid())
+  incidentId    String
+  model         String   @default("gpt-4-turbo-preview")
+  promptTokens  Int      @default(0)
+  completionTokens Int   @default(0)
+  totalTokens   Int      @default(0)
+  analysis      Json?    // AI解析結果 { hypothesis, reproduction_steps, suggested_actions }
+  duration      Int?     // 実行時間（ms）
+  success       Boolean  @default(true)
+  errorMsg      String?
+  createdAt     DateTime @default(now())
+
+  incident      Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([createdAt])
+  @@map("agent_runs")
+}
